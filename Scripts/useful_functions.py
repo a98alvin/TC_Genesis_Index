@@ -121,3 +121,59 @@ def create_genesis_grid_labels(month_range,year_range,vmin,basin_dataset):
     labels_stack = labels.stack(z=("Month","Latitude","Longitude","Year"))
     
     return labels_stack
+
+def take_closest_point(labels_predropped,NaNlocs,envstack,vars_list):
+
+    import pandas as pd
+    import numpy as np
+    from distance import pointdist_calc
+
+    
+    labels_tbd = labels_predropped.__xarray_dataarray_variable__[NaNlocs]
+    badgenlocs = np.where(labels_tbd > 0)[0]
+    unstacklabels = labels_predropped.unstack()
+
+    counter = 0
+    # Find distance from would've been dropped label
+    for baditerations in range(0,len(badgenlocs)):
+        current_tbd_label = labels_tbd[badgenlocs[baditerations]]
+        current_tbd_lon = current_tbd_label.coords['Longitude']
+        current_tbd_lat = current_tbd_label.coords['Latitude']
+
+        # Find location and distance of closest non NaN data point for all vars
+        allcurrentbooleans = []
+        for variablecheck in range(0,len(vars_list)):
+
+            currentdata_to_rect = envstack.sel(Month=float(current_tbd_label.coords['Month']),Year = float(current_tbd_label.coords['Year']),
+                             Variable=vars_list[variablecheck])
+
+            # Find distances of every point in data to the bad label location
+            currentdistancesarr = []
+            for indivpoint in range(0,len(currentdata_to_rect)):
+                current_data_lat = float(currentdata_to_rect[indivpoint].coords['Latitude'])
+                current_data_lon = float(currentdata_to_rect[indivpoint].coords['Longitude'])
+                distance_to_bad = pointdist_calc(current_data_lat,current_data_lon,current_tbd_lat,current_tbd_lon)
+                currentdistancesarr.append(distance_to_bad)
+
+            currentboolean = currentdata_to_rect.isnull()
+            allcurrentbooleans.append(list(np.asarray(currentboolean)))
+
+        allboospd = pd.DataFrame(allcurrentbooleans).transpose()
+        allboospd.columns=vars_list
+        distspd = pd.DataFrame(currentdistancesarr,columns=['Distance'])
+        allvarswithdistpd = pd.concat([allboospd,distspd],axis=1)
+        goodplaces = allvarswithdistpd.loc[(allvarswithdistpd[vars_list[0]] == False) & (allvarswithdistpd[vars_list[1]] == False) & (allvarswithdistpd[vars_list[2]] == False) & (allvarswithdistpd[vars_list[3]] == False)]
+        locusedpre = np.where(goodplaces['Distance'] == np.min(goodplaces['Distance']))[0][0]
+        locused = goodplaces.iloc[locusedpre].name
+
+        print(np.min(goodplaces['Distance']) < 300)
+        if np.min(goodplaces['Distance']) < 300: # change closest point to yes
+            locinfo = labels_predropped.__xarray_dataarray_variable__.sel(Month=float(current_tbd_label.coords['Month']),Year = float(current_tbd_label.coords['Year']))[locused]
+            monthinfo = float(locinfo.Month)
+            yearinfo = float(locinfo.Year)
+            latinfo = float(locinfo.Latitude)
+            loninfo = float(locinfo.Longitude)    
+            unstacklabels.__xarray_dataarray_variable__.loc[monthinfo,latinfo,loninfo,yearinfo] = unstacklabels.__xarray_dataarray_variable__.loc[monthinfo,latinfo,loninfo,yearinfo] + float(current_tbd_label)
+            counter = counter + 1
+            print('action performed #' + str(counter))
+    return unstacklabels
