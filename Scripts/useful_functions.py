@@ -37,7 +37,8 @@ def month_genesis_locs(year_desired,month_desired,basin_dataset,min_wspd):
     from calendar import monthrange
     from datetime import date as dt
     import numpy as np
-
+    year_desired = int(year_desired)
+    month_desired = int(month_desired)
     szn_DF = basin_dataset.get_season(year_desired).to_dataframe() # Get information of year
   
     # Set Minimum Wind Speed Requirement (THIS ONLY FILTERS WEAK STORMS!) Still need to find first time of a certain intensity!
@@ -117,7 +118,7 @@ def create_genesis_grid_labels(month_range,year_range,vmin,basin_dataset):
 
             all_months_total_data_arr.append(single_year_data_arr)
 
-    labels = xr.DataArray(all_months_total_data_arr,coords=[("Month",month_range),("Year",year_range),("Latitude",latgrid),("Longitude",longridnew)])
+    labels = xr.DataArray(all_months_total_data_arr,coords=[("Month",month_range),("Year",year_range),("Latitude",latgrid.astype(float)),("Longitude",longridnew.astype(float))])
     labels_stack = labels.stack(z=("Month","Latitude","Longitude","Year"))
     
     return labels_stack
