@@ -30,7 +30,7 @@ for vars_list_now in vars_list:
 arr = xr.DataArray(all_vars_list,coords=[("Variable",vars_list),("Year",range(1950,2021)),("Latitude",lats),("Longitude",lons),("Month",range(1,13))])
 
 # # Time ranges for EVERYTHING desired
-month_range = np.arange(6,12,1)
+month_range = np.arange(1,13,1)
 test_years = np.arange(2005,2021,1)
 train_years = np.arange(1950,2005,1)
 train_years = np.setdiff1d(train_years, np.arange(1971,1979,1))
@@ -44,18 +44,18 @@ train_env_data = train_stacked.drop_isel(z=train_NaNlocs).transpose()
 test_env_data = test_stacked.drop_isel(z=test_NaNlocs).transpose()
 
 #--------------------------------------------------------------------------------------------------------
-## Grab ibtracs data (uncomment this section if you want to recreate genesis (observed) labels, otherwise it is already saved)
-#basin_dataset = tracks.TrackDataset(basin='north_atlantic',source='ibtracs',include_btk=True)
+# # Grab ibtracs data (uncomment this section if you want to recreate genesis (observed) labels, otherwise it is already saved)
+# basin_dataset = tracks.TrackDataset(basin='north_atlantic',source='ibtracs',include_btk=True)
 
-# Create genesis labels from ibtracs data (slowest step)
-#vmin=0
-#print('Training Dataset')
-#train_labels_predropped = create_genesis_grid_labels(month_range,train_years,vmin,basin_dataset)
-#print('Testing Dataset')
-#test_labels_predropped = create_genesis_grid_labels(month_range,test_years,vmin,basin_dataset)
+# # Create genesis labels from ibtracs data (slowest step)
+# vmin=0
+# print('Training Dataset')
+# train_labels_predropped = create_genesis_grid_labels(month_range,train_years,vmin,basin_dataset)
+# print('Testing Dataset')
+# test_labels_predropped = create_genesis_grid_labels(month_range,test_years,vmin,basin_dataset)
 
-#train_labels_predropped.unstack().to_netcdf("/glade/work/acheung/Initial_RF_Datasets/train_labels_predropped.nc")
-#test_labels_predropped.unstack().to_netcdf("/glade/work/acheung/Initial_RF_Datasets/test_labels_predropped.nc")
+# train_labels_predropped.unstack().to_dataset(name='Genesis_Grids').to_netcdf("/glade/work/acheung/Initial_RF_Datasets/train_labels_predropped.nc")
+#test_labels_predropped.unstack().to_dataset(name='Genesis_Grids').to_netcdf("/glade/work/acheung/Initial_RF_Datasets/test_labels_predropped.nc")
 #--------------------------------------------------------------------------------------------------------
 
 # Read in already created genesis (obs) labels
@@ -77,14 +77,15 @@ test_labels = teststackedlabels.drop_isel(z=test_NaNlocs)
 
 # Fit RF Model
 clf = RandomForestClassifier()
-clf.fit(train_env_data, train_labels.__xarray_dataarray_variable__)
+clf.fit(train_env_data, train_labels.Genesis_Grids)
 probs = clf.predict_proba(test_env_data)
 genesisprobs = 1 - probs[:,0]
 testprobs_formatted = xr.DataArray(genesisprobs,coords=test_labels.coords).unstack() # Genesis probability
 
 # Unstack and formatted test labels (observed)
-testlabelpoints = test_labels.__xarray_dataarray_variable__.unstack()
-
+testlabelpoints = test_labels.Genesis_Grids.unstack()
+trainlabelpoints = train_labels.Genesis_Grids.unstack()
 # Save testlabelpoints (observed) and testprobs_formatted (prediction)
 testlabelpoints.to_netcdf("/glade/work/acheung/Initial_RF_Datasets/test_label_points_obs.nc")
+trainlabelpoints.to_netcdf("/glade/work/acheung/Initial_RF_Datasets/train_label_points_obs.nc")
 testprobs_formatted.to_netcdf("/glade/work/acheung/Initial_RF_Datasets/probabilities_prediction.nc")
