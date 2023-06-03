@@ -181,7 +181,7 @@ def take_closest_point(labels_predropped,NaNlocs,envstack,vars_list):
 # Spatial and Temporal Smoothing
 
 # Temporal smoothing
-def temporal_spatial_smoothing(data_array,temporal_sigma,spatial_sigma):
+def temporal_spatial_smoothing(data_array,temporal_sigma,spatial_sigma): # Data Array needs to be as type float!
     from itertools import product
     import xarray as xr
     import copy
