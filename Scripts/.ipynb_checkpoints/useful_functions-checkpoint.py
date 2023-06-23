@@ -108,7 +108,7 @@ def create_genesis_grid_labels(month_range,year_range,vmin,basin_dataset):
                 # Grid Counter
                 delta_degs = 2 # Size of boxes in degrees
                 lon_ranges = [-100,0] # Lon range to count (in the last value, add 10 to your desired value)
-                lat_ranges = [0,80] # Lat range to count (in the last value, add 10 to your desired value)
+                lat_ranges = [0,60] # Lat range to count (in the last value, add 10 to your desired value)
                 total_data_arr,longrid,latgrid = grid_counter(delta_degs,lon_ranges,lat_ranges,start_lons,start_lats) # Call grid_counter function
 
                 longridnew = longrid + 360 # WARNING: This only works for Atlantic Basin (need to modify if changing domain)
