@@ -94,7 +94,7 @@ def environmental_select_stack(month_range,year_range,Latitude,Longitude,arr):
     
     return stacked,NaNlocs
 
-def create_genesis_grid_labels(month_range,year_range,vmin,basin_dataset):
+def create_genesis_grid_labels(month_range,year_range,vmin,basin_dataset): # Need to move lat_ranges and lon_ranges out of function
     from useful_functions import month_genesis_locs
     from useful_functions import grid_counter
     import xarray as xr
