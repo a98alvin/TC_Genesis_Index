@@ -12,7 +12,7 @@ data_interval = 7 # Range of data to be averaging over
 date_range_list = era_5_datestrings(data_interval)
 variable_id = '138_vo' # for relative vorticity
 
-all_path_strs = generate_pathstrs(date_range_list,variable_id)
+all_path_strs = generate_pathstrs(date_range_list,variable_id,'sc')
 
 # Open only pressure level 850 hPa
 def _preprocess(x,level):
@@ -56,7 +56,7 @@ for begin_ind in np.arange(0,len(all_path_strs),data_interval):
     var_file_name_full = variable_file_name_base + variable_file_name_start_time + variable_file_name_end_time
 
 
-    mean_abs_vort_850.to_dataset(name='Absolute Vorticity').to_netcdf('/glade/scratch/acheung/abs_vort/'+var_file_name_full)
+    mean_abs_vort_850.to_dataset(name='Absolute Vorticity').to_netcdf(path+'/'+var_file_name_full)
 
 # end time
 end = time.time()

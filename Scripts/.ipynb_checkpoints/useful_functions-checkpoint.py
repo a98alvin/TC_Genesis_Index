@@ -235,7 +235,7 @@ def era_5_datestrings(data_interval):
 
 
 # Create pathstrings for ERA5 Processing
-def generate_pathstrs(date_range_list,variable_id):
+def generate_pathstrs(date_range_list,variable_id,sc_or_uv):
 # Create all path strings
 
     all_path_strs = []
@@ -250,7 +250,7 @@ def generate_pathstrs(date_range_list,variable_id):
         else:
             current_day_num = str(current_date.day)
 
-        path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.pl/'+str(current_date.year)+current_month+'/e5.oper.an.pl.128_' + variable_id + '.ll025sc.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month +current_day_num + '23.nc' 
+        path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.pl/'+str(current_date.year)+current_month+'/e5.oper.an.pl.128_' + variable_id + '.ll025'+sc_or_uv+'.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month +current_day_num + '23.nc' 
         all_path_strs.append(path_str)
     
     return all_path_strs
