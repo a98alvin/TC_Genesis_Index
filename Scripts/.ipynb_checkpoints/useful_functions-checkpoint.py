@@ -206,3 +206,51 @@ def temporal_spatial_smoothing(data_array,temporal_sigma,spatial_sigma): # Data 
     spatially_temporally_filtered_XR = xr.DataArray(spatially_filtered_grid,coords = [stack_for_spatial.coords['z'],
                                                    stack_for_spatial.coords['Latitude'],stack_for_spatial.coords['Longitude']]).unstack()
     return spatially_temporally_filtered_XR
+
+# Create datestrings for ERA5 Processing
+def era_5_datestrings(data_interval):
+    import os
+    import datetime as dt
+    import copy
+    
+    months_from_dir = sorted(os.listdir('/glade/collections/rda/data/ds633.0/e5.oper.an.pl'))
+    first_month_str = months_from_dir[0]
+    first_month_dt = dt.datetime.strptime(first_month_str, '%Y%m')
+    last_month_str = months_from_dir[-1]
+    last_month_dt = dt.datetime.strptime(last_month_str, '%Y%m')
+    # We process all data except for the most current year (so we have an entire year for every year we look at)
+    end_year = last_month_dt.year
+
+    date_range_list = []
+    current_dt = copy.deepcopy(first_month_dt)
+    date_range_list.append(current_dt)
+    # Create a list of datetimes from start to last full year
+
+    while current_dt.year < end_year: 
+        current_dt = current_dt + dt.timedelta(days=1)
+        if current_dt.year < end_year:    
+            date_range_list.append(current_dt)
+    
+    return date_range_list
+
+
+# Create pathstrings for ERA5 Processing
+def generate_pathstrs(date_range_list,variable_id):
+# Create all path strings
+
+    all_path_strs = []
+    for current_date in date_range_list:
+        if current_date.month < 10:
+            current_month = '0'+str(current_date.month)
+        else:
+            current_month = str(current_date.month)
+
+        if current_date.day < 10:
+            current_day_num = '0' + str(current_date.day)
+        else:
+            current_day_num = str(current_date.day)
+
+        path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.pl/'+str(current_date.year)+current_month+'/e5.oper.an.pl.128_' + variable_id + '.ll025sc.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month +current_day_num + '23.nc' 
+        all_path_strs.append(path_str)
+    
+    return all_path_strs
