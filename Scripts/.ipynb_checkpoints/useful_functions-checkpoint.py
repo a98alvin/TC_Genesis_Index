@@ -208,16 +208,20 @@ def temporal_spatial_smoothing(data_array,temporal_sigma,spatial_sigma): # Data 
     return spatially_temporally_filtered_XR
 
 # Create datestrings for ERA5 Processing
-def era_5_datestrings(data_interval):
+def era_5_datestrings(data_interval,type_of_analysis,first_year): #pl or sfc
     import os
     import datetime as dt
     import copy
+    from dateutil.relativedelta import relativedelta
     
-    months_from_dir = sorted(os.listdir('/glade/collections/rda/data/ds633.0/e5.oper.an.pl'))
-    first_month_str = months_from_dir[0]
-    first_month_dt = dt.datetime.strptime(first_month_str, '%Y%m')
-    last_month_str = months_from_dir[-1]
-    last_month_dt = dt.datetime.strptime(last_month_str, '%Y%m')
+    months_from_dir = sorted(os.listdir('/glade/collections/rda/data/ds633.0/e5.oper.an.'+type_of_analysis))
+    # first_month_str = months_from_dir[0]
+    # first_month_dt = dt.datetime.strptime(first_month_str, '%Y%m')
+    first_month_dt = dt.datetime(first_year,1,1)
+    # last_month_str = months_from_dir[-1]
+    # last_month_dt = dt.datetime.strptime(last_month_str, '%Y%m')
+    last_month_dt = dt.datetime(first_year,12,31) # we are doing yearly (so this is the same year)
+
     # We process all data except for the most current year (so we have an entire year for every year we look at)
     end_year = last_month_dt.year
 
@@ -226,18 +230,25 @@ def era_5_datestrings(data_interval):
     date_range_list.append(current_dt)
     # Create a list of datetimes from start to last full year
 
-    while current_dt.year < end_year: 
-        current_dt = current_dt + dt.timedelta(days=1)
-        if current_dt.year < end_year:    
-            date_range_list.append(current_dt)
+    if type_of_analysis == 'pl':
+        while current_dt.year <= end_year: 
+            current_dt = current_dt + dt.timedelta(days=1)
+            if current_dt.year <= end_year:    
+                date_range_list.append(current_dt)
+    elif type_of_analysis == 'sfc':
+        while current_dt.year <= end_year: 
+            current_dt = current_dt + relativedelta(months=1)
+            if current_dt.year <= end_year:    
+                date_range_list.append(current_dt)    
     
     return date_range_list
 
 
 # Create pathstrings for ERA5 Processing
-def generate_pathstrs(date_range_list,variable_id,sc_or_uv):
+def generate_pathstrs(date_range_list,variable_id,sc_or_uv,type_of_analysis):
 # Create all path strings
-
+    import calendar
+    
     all_path_strs = []
     for current_date in date_range_list:
         if current_date.month < 10:
@@ -249,8 +260,89 @@ def generate_pathstrs(date_range_list,variable_id,sc_or_uv):
             current_day_num = '0' + str(current_date.day)
         else:
             current_day_num = str(current_date.day)
-
-        path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.pl/'+str(current_date.year)+current_month+'/e5.oper.an.pl.128_' + variable_id + '.ll025'+sc_or_uv+'.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month +current_day_num + '23.nc' 
+            
+        if type_of_analysis == 'sfc':
+            num_of_days = calendar.monthrange(current_date.year, current_date.month)[1]
+    
+        if type_of_analysis == 'pl': 
+            path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.'+type_of_analysis+'/'+str(current_date.year)+current_month+'/e5.oper.an.'+type_of_analysis+'.128_' + variable_id + '.ll025'+sc_or_uv+'.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month +current_day_num + '23.nc' 
+        elif type_of_analysis == 'sfc':
+            path_str = '/glade/collections/rda/data/ds633.0/e5.oper.an.'+type_of_analysis+'/'+str(current_date.year)+current_month+'/e5.oper.an.'+type_of_analysis+'.128_' + variable_id + '.ll025'+sc_or_uv+'.' + str(current_date.year) + current_month +current_day_num + '00_'+ str(current_date.year) + current_month + str(num_of_days) + '23.nc' 
+        
         all_path_strs.append(path_str)
     
     return all_path_strs
+
+def run_sample_dataset_2(ds, dim='level',CKCD=0.9):
+    import xarray as xr
+    from tcpyPI import pi
+    """ This function calculates PI over the sample dataset using xarray """
+    
+    # open the sample data file
+#    ds = xr.open_dataset(fn)
+    # calculate PI over the whole data set using the xarray universal function
+    result = xr.apply_ufunc(
+        pi,
+        ds['SSTK'], ds['MSL'], ds[dim], ds['T'], ds['Q'],
+        kwargs=dict(CKCD=CKCD, ascent_flag=0, diss_flag=1, ptop=50, miss_handle=1),
+        input_core_dims=[
+            [], [], [dim, ], [dim, ], [dim, ],
+        ],
+        output_core_dims=[
+            [], [], [], [], []
+        ],
+        vectorize=True,dask='parallelized'
+    )
+
+    # store the result in an xarray data structure
+    vmax, pmin, ifl, t0, otl = result
+    out_ds=xr.Dataset({
+        'vmax': vmax, 
+        'pmin': pmin,
+        'ifl': ifl,
+        't0': t0,
+        'otl': otl,
+        # merge the state data into the same data structure
+        'sst': ds.SSTK,
+        't': ds.T,
+        'q': ds.Q,
+        'msl': ds.MSL,
+        })
+    
+    # add names and units to the structure
+    out_ds.vmax.attrs['standard_name'],out_ds.vmax.attrs['units']='Maximum Potential Intensity','m/s'
+    out_ds.pmin.attrs['standard_name'],out_ds.pmin.attrs['units']='Minimum Central Pressure','hPa'
+    out_ds.ifl.attrs['standard_name']='pyPI Flag'
+    out_ds.t0.attrs['standard_name'],out_ds.t0.attrs['units']='Outflow Temperature','K'
+    out_ds.otl.attrs['standard_name'],out_ds.otl.attrs['units']='Outflow Temperature Level','hPa'
+
+    # return the output from pi.py as an xarray data structure
+    return out_ds
+
+     # Since W files are monthly, the lines below determine which W files are needed for the requsted dates in range from W*
+def week_to_month(week_start_dt,week_end_dt,var_id,sc_or_uv):
+    from calendar import monthrange
+    import numpy as np
+
+    months_needed = [week_start_dt.month,week_end_dt.month]
+    months_needed_uniq = np.unique(months_needed)
+    years_needed = [week_start_dt.year,week_end_dt.year]
+
+    # May be one or two strings
+
+    path_strs_needed = [] # This is a list of string(s) needed to open, sometimes one or two files if crossing months
+    
+    for str_now in range(0,len(months_needed_uniq)):
+            current_str_month = str(months_needed[str_now])
+        
+            if months_needed[str_now] < 10:
+                current_str_month = '0' + current_str_month
+
+            current_str_year = str(years_needed[str_now])
+            current_days_in_month = str(monthrange(int(current_str_year), int(current_str_month))[1])
+
+
+            generate_current_datestrs = '/glade/collections/rda/data/ds633.0/e5.oper.an.sfc/'+current_str_year+current_str_month+'/'+'e5.oper.an.sfc.128_'+var_id+'.ll025'+sc_or_uv+'.'+current_str_year+current_str_month+'0100_'+current_str_year+current_str_month+current_days_in_month+'23.nc'
+            path_strs_needed.append(generate_current_datestrs) # Append the filepaths that are needed
+        
+    return path_strs_needed
