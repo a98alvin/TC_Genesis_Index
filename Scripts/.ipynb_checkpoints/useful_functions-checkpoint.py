@@ -47,6 +47,7 @@ def month_genesis_locs(year_desired,month_desired,basin_dataset,min_wspd):
     
     # Set time as index
     szn_DF_starts = szn_DF.set_index(['start_time'])
+    szn_DF_starts = szn_DF_starts.sort_index()
 
     days_in_month = monthrange(year_desired, month_desired)[1] # Identify the number of days in a month
     
